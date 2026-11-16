@@ -1,6 +1,5 @@
 # Práctica individual de contrato JSON y dirección de entrega
 
-**Nombre o código estudiantil:** ____________________
 
 ## Proceso y alcance
 
@@ -10,12 +9,12 @@ Es una adaptación educativa independiente del sistema de restaurante. En el sis
 
 ### Referencia del flujo del proyecto de aula
 
-En el sistema de restaurante, un cliente identificado desde la web o la aplicación móvil registra una dirección para utilizarla en pedidos a domicilio. Los dos clientes necesitan enviar e interpretar los mismos campos. Esta práctica toma **ese proceso y su vocabulario** como referencia; no consulta ni modifica la base de datos del sistema original. La correspondencia siguiente es conceptual, basada en la descripción del proyecto y en los límites del DTO Java proporcionados para la actividad. No atribuye nombres de clases ni una arquitectura concreta al proyecto original.
+En el sistema de restaurante, un cliente identificado desde la web o la aplicación móvil registra una dirección para utilizarla en pedidos a domicilio. Los dos clientes necesitan enviar e interpretar los mismos campos. Esta práctica toma **ese proceso y su vocabulario** como referencia; no consulta ni modifica la base de datos del sistema original. La correspondencia siguiente es conceptual y no atribuye nombres de clases ni una arquitectura concreta al proyecto original.
 
 | En el proceso del restaurante | En esta práctica Laravel |
 | --- | --- |
-| Cliente web o móvil envía una dirección de entrega | Postman o `curl.exe` simula al cliente y envía JSON a `POST /api/v1/clientes/direcciones` |
-| El DTO Java de referencia limita `etiqueta` a 40, `direccion` a 200, `telefono` a 20, `observaciones` a 200 y `referencia` a 200 caracteres | `StoreDireccionEntregaRequest` aplica esos mismos máximos, además de validar obligatoriedad, tipos y rangos de coordenadas |
+| Cliente web o móvil envía una dirección de entrega | Postman simula al cliente y envía JSON a `POST /api/v1/clientes/direcciones` |
+| Los campos de la dirección tienen límites acordados para el proyecto de aula | `StoreDireccionEntregaRequest` aplica máximos de 40 caracteres para `etiqueta`, 200 para `direccion`, 20 para `telefono` y 200 para `observaciones` y `referencia`; también valida obligatoriedad, tipos y rangos de coordenadas |
 | La dirección pertenece a un cliente autenticado | Se omiten cuentas, autenticación y `cliente_id`; se guarda solo la dirección para estudiar el contrato JSON |
 | Registrar la dirección permite usarla después en un pedido a domicilio | `DireccionEntregaController` guarda los datos validados mediante el modelo `DireccionEntrega` en SQLite; no se implementan pedidos |
 | El cliente necesita conocer la dirección registrada | `DireccionEntregaResource` define la respuesta pública bajo `data`, con `id`, campos de la dirección, `activa` y `creadoAt` |
@@ -24,7 +23,7 @@ En términos de integración, el punto común entre ambos clientes es el **contr
 
 ## Contrato de solicitud
 
-El cliente envía `Content-Type: application/json` y solicita JSON con `Accept: application/json`. Los campos opcionales pueden omitirse o enviarse como `null`. Los límites de texto coinciden con los del DTO Java usado como referencia del dominio.
+El cliente envía `Content-Type: application/json` y solicita JSON con `Accept: application/json`. Los campos opcionales pueden omitirse o enviarse como `null`. Los límites de texto usados en esta práctica son los acordados como referencia para el proceso del proyecto de aula.
 
 | Campo | Tipo JSON | Obligatorio | Restricciones | Significado |
 | --- | --- | --- | --- | --- |
@@ -65,7 +64,7 @@ Al crear, la API devuelve **HTTP 201 Created** con el objeto `data`. Los campos 
 | `activa` | boolean | Sí | `true` al registrar |
 | `creadoAt` | string | Sí | Fecha y hora ISO 8601 con desplazamiento de zona horaria |
 
-Esta fue la respuesta real de P1; en otra ejecución cambiarán `id` y `creadoAt`:
+Ejemplo de respuesta de P1; en cada ejecución cambiarán `id` y `creadoAt`:
 
 ```json
 {"data":{"id":3,"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123","telefono":null,"observaciones":null,"referencia":null,"lat":null,"lng":null,"activa":true,"creadoAt":"2026-11-16T03:11:01+00:00"}}
@@ -82,9 +81,10 @@ En P3, `lat` vale `"norte"` y la respuesta contiene `errors.lat`. También se re
 ## Cómo ocurre el intercambio
 
 ```text
-Cliente web o móvil
-    → JSON → API Laravel → Form Request → controlador y modelo → SQLite
-    ← JSON ← API Resource ← dirección registrada ←───────────────┘
+Cliente web o móvil → API Laravel → Form Request
+    Datos válidos → controlador y modelo (registro) → SQLite
+                 → API Resource → JSON 201 → cliente web o móvil
+    Datos inválidos → errors por campo → JSON 422 → cliente web o móvil
 ```
 
 Laravel **deserializa** el cuerpo JSON y deja sus valores disponibles en `StoreDireccionEntregaRequest`. Este Form Request valida antes de que se ejecute el controlador. El controlador guarda únicamente `$request->validated()` mediante el modelo `DireccionEntrega`. `DireccionEntregaResource` selecciona los campos públicos y Laravel los **serializa** en el objeto JSON `data`. El contrato evita que clientes diferentes interpreten `lat` como texto, `activa` como número o la fecha con otro formato.
@@ -93,41 +93,71 @@ Laravel **deserializa** el cuerpo JSON y deja sus valores disponibles en `StoreD
 
 La práctica usa el archivo local `database/database.sqlite`. No necesita un servidor de base de datos. Las pruebas automatizadas usan otra base SQLite en memoria (`:memory:`), por lo que no cambian los registros del archivo local.
 
-## Instalación y ejecución en PowerShell
+## Preparación y arranque en PowerShell
 
-Se requiere PHP 8.3 o superior con `pdo_sqlite` y Composer. Desde la raíz de este repositorio:
+Se requiere PHP 8.3 o superior con `pdo_sqlite`, Composer y Postman. Abre PowerShell en la raíz de este repositorio y comprueba los requisitos:
 
 ```powershell
+php -v
+php -m | Select-String pdo_sqlite
+composer -V
 composer install
 if (-not (Test-Path .env)) { Copy-Item .env.example .env; php artisan key:generate --no-interaction }
 if (-not (Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File | Out-Null }
 ```
 
-En `.env` (archivo ignorado por el repositorio), dejar `DB_CONNECTION=sqlite` y comentar o quitar `DB_DATABASE` para usar `database/database.sqlite`. No hace falta configurar host, puerto, usuario ni contraseña. `phpunit.xml` fija `DB_CONNECTION=sqlite` y `DB_DATABASE=:memory:` para las pruebas. La prueba comprueba esa configuración antes de que `RefreshDatabase` ejecute las migraciones de test.
+En `.env` (archivo ignorado por el repositorio), deja `DB_CONNECTION=sqlite` y comenta o quita `DB_DATABASE` para usar `database/database.sqlite`. Si `.env` ya existía pero `APP_KEY` está vacío, ejecuta `php artisan key:generate --no-interaction`. No hace falta configurar host, puerto, usuario ni contraseña. `phpunit.xml` fija `DB_CONNECTION=sqlite` y `DB_DATABASE=:memory:` para las pruebas automatizadas.
 
 ```powershell
 php artisan config:clear --no-interaction
 php artisan migrate --no-interaction
-php artisan db:seed --class=DatabaseSeeder --no-interaction  # opcional: una dirección ficticia
 php artisan serve --host=127.0.0.1 --port=8000 --no-interaction
 ```
 
-En otra terminal PowerShell, desde la misma carpeta, ejecutar P1, P2 y P3. `-i` muestra el estado HTTP y la respuesta:
+Deja abierta esa terminal mientras pruebas en Postman. El servidor debe indicar que escucha en `http://127.0.0.1:8000`. Si el puerto 8000 está ocupado, usa otro puerto en `php artisan serve` y cambia la URL de Postman para que coincida.
 
-```powershell
-curl.exe -i -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary '@examples/p1-valida.json' http://127.0.0.1:8000/api/v1/clientes/direcciones
-curl.exe -i -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary '@examples/p2-sin-etiqueta.json' http://127.0.0.1:8000/api/v1/clientes/direcciones
-curl.exe -i -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary '@examples/p3-lat-invalida.json' http://127.0.0.1:8000/api/v1/clientes/direcciones
+## Pruebas manuales en Postman
+
+1. Crea una solicitud HTTP nueva. Selecciona **POST** y escribe `http://127.0.0.1:8000/api/v1/clientes/direcciones`.
+2. En **Authorization**, selecciona **No Auth**. En **Headers**, agrega `Content-Type: application/json` y `Accept: application/json`.
+3. En **Body**, selecciona **raw** y luego **JSON**. Pega uno de los cuerpos siguientes y pulsa **Send**. Reutiliza la misma solicitud cambiando solo el cuerpo para P2 y P3.
+
+**P1: solicitud válida.** Pega:
+
+```json
+{"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123"}
 ```
 
-Para repetir las pruebas automatizadas:
+Debe aparecer **201 Created**. La respuesta debe tener `data.id` entero, `data.etiqueta` y `data.direccion` iguales a lo enviado, campos opcionales en `null`, `data.activa` en `true` y `data.creadoAt` como fecha ISO 8601. El `id` y la fecha no tienen un valor fijo. P1 crea una fila en SQLite cada vez que pulses **Send**.
+
+**P2: falta un campo obligatorio.** Reemplaza el cuerpo por:
+
+```json
+{"direccion":"Calle Ficticia 123"}
+```
+
+Debe aparecer **422 Unprocessable Content** con `errors.etiqueta` y no debe crearse otra fila.
+
+**P3: tipo incorrecto.** Reemplaza el cuerpo por:
+
+```json
+{"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123","lat":"norte"}
+```
+
+Debe aparecer **422 Unprocessable Content** con `errors.lat` y tampoco debe crearse otra fila. Compara los tres estados y cuerpos con los contratos anteriores. El texto exacto de `message` puede variar según el idioma configurado; comprueba sobre todo las claves de `errors`.
+
+Los mismos cuerpos están guardados en `examples/p1-valida.json`, `examples/p2-sin-etiqueta.json` y `examples/p3-lat-invalida.json` para copiarlos a Postman.
+
+## Pruebas automatizadas
+
+Abre una segunda terminal PowerShell en la raíz del repositorio y ejecuta:
 
 ```powershell
 php artisan test --compact tests/Feature/RegistrarDireccionEntregaTest.php
 php artisan test --compact
 ```
 
-Los tests usan SQLite en memoria; no cambian `database/database.sqlite`. La comprobación previa de la prueba detiene las migraciones de test si la conexión no es `sqlite` o la base de test no es `:memory:`.
+Estos tests comprueban P1, P2 y P3, incluidos los 422 y que las solicitudes inválidas no inserten filas. Usan SQLite en memoria y no cambian `database/database.sqlite`. La comprobación previa de la prueba detiene las migraciones de test si la conexión no es `sqlite` o la base de test no es `:memory:`.
 
 ## Resultados de las pruebas
 
@@ -137,7 +167,7 @@ Los tests usan SQLite en memoria; no cambian `database/database.sqlite`. La comp
 | P2 | Falta `etiqueta` | 422, `errors.etiqueta`, sin fila nueva |
 | P3 | `lat` es `"norte"` | 422, `errors.lat`, sin fila nueva |
 
-La suite específica pasó 8 pruebas y 74 aserciones. Las pruebas comprueban el estado y el cuerpo JSON, así como la ausencia de registros nuevos tras P2 y P3.
+La suite específica pasó **8 pruebas y 74 aserciones**; la suite completa pasó **10 pruebas y 76 aserciones**. Las pruebas comprueban el estado y el cuerpo JSON, así como la ausencia de registros nuevos tras P2 y P3.
 
 ## Reflexión individual
 
