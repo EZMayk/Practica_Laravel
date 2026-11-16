@@ -7,6 +7,12 @@
 
 Es una adaptación educativa independiente del sistema de restaurante. En el sistema original la dirección pertenece a un cliente autenticado; aquí no hay cuentas, autenticación ni vínculo con un cliente. La ruta representa el mismo tipo de operación, pero **no afirma ser una API idéntica** a la del sistema original. La única operación implementada para esta práctica es el registro.
 
+## Archivos de entrega
+
+La implementación de esta práctica está en `routes/api.php` (ruta POST de direcciones), `app/Http/Requests/StoreDireccionEntregaRequest.php` (validación), `app/Http/Controllers/Api/DireccionEntregaController.php` (registro), `app/Models/DireccionEntrega.php` (modelo), `app/Http/Resources/DireccionEntregaResource.php` (respuesta JSON) y `database/migrations/2026_11_15_234102_create_direccion_entregas_table.php` (tabla SQLite). Los errores de las rutas API se configuran como JSON en `bootstrap/app.php`.
+
+Las pruebas están en `tests/Feature/RegistrarDireccionEntregaTest.php`; `phpunit.xml` las aísla en SQLite en memoria. Los cuerpos para Postman están en `examples/p1-valida.json`, `examples/p2-sin-etiqueta.json` y `examples/p3-lat-invalida.json`. `database/factories/DireccionEntregaFactory.php` y `database/seeders/DatabaseSeeder.php` sirven únicamente para crear un registro ficticio opcional. El contrato y los comandos de ejecución se encuentran en este `README.md`. El código se entrega mediante este repositorio, junto con el informe Word por separado.
+
 ### Referencia del flujo del proyecto de aula
 
 En el sistema de restaurante, un cliente identificado desde la web o la aplicación móvil registra una dirección para utilizarla en pedidos a domicilio. Los dos clientes necesitan enviar e interpretar los mismos campos. Esta práctica toma **ese proceso y su vocabulario** como referencia; no consulta ni modifica la base de datos del sistema original. La correspondencia siguiente es conceptual y no atribuye nombres de clases ni una arquitectura concreta al proyecto original.
