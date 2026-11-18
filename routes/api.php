@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/v1/clientes/direcciones', [DireccionEntregaController::class, 'store']);
+Route::post('/v1/clientes/direcciones/checkout', [DireccionEntregaController::class, 'storeDesdeCheckout']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
