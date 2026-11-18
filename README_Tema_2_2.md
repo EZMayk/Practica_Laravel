@@ -11,7 +11,7 @@ Es una adaptación educativa independiente del sistema de restaurante. En el sis
 
 La implementación de esta práctica está en `routes/api.php` (ruta POST de direcciones), `app/Http/Requests/StoreDireccionEntregaRequest.php` (validación), `app/Http/Controllers/Api/DireccionEntregaController.php` (registro), `app/Models/DireccionEntrega.php` (modelo), `app/Http/Resources/DireccionEntregaResource.php` (respuesta JSON) y `database/migrations/2026_11_15_234102_create_direccion_entregas_table.php` (tabla SQLite). Los errores de las rutas API se configuran como JSON en `bootstrap/app.php`.
 
-Las pruebas están en `tests/Feature/RegistrarDireccionEntregaTest.php`; `phpunit.xml` las aísla en SQLite en memoria. Los cuerpos para Postman están en `examples/p1-valida.json`, `examples/p2-sin-etiqueta.json` y `examples/p3-lat-invalida.json`. `database/factories/DireccionEntregaFactory.php` y `database/seeders/DatabaseSeeder.php` sirven únicamente para crear un registro ficticio opcional. El contrato y los comandos de ejecución se encuentran en este `README.md`. El código se entrega mediante este repositorio, junto con el informe Word por separado.
+Las pruebas están en `tests/Feature/RegistrarDireccionEntregaTest.php`; `phpunit.xml` las aísla en SQLite en memoria. Los tres cuerpos JSON para Postman aparecen en la sección de pruebas manuales de este documento. `database/factories/DireccionEntregaFactory.php` y `database/seeders/DatabaseSeeder.php` sirven únicamente para crear un registro ficticio opcional. El contrato y los comandos de ejecución se encuentran en este README.
 
 ### Referencia del flujo del proyecto de aula
 
@@ -151,8 +151,6 @@ Debe aparecer **422 Unprocessable Content** con `errors.etiqueta` y no debe crea
 ```
 
 Debe aparecer **422 Unprocessable Content** con `errors.lat` y tampoco debe crearse otra fila. Compara los tres estados y cuerpos con los contratos anteriores. El texto exacto de `message` puede variar según el idioma configurado; comprueba sobre todo las claves de `errors`.
-
-Los mismos cuerpos están guardados en `examples/p1-valida.json`, `examples/p2-sin-etiqueta.json` y `examples/p3-lat-invalida.json` para copiarlos a Postman.
 
 ## Pruebas automatizadas
 

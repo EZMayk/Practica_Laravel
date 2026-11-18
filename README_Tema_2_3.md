@@ -10,7 +10,7 @@ Esta es una adaptación educativa independiente del sistema de restaurante. En e
 
 El traductor está en `app/Services/NormalizadorDireccionEntrega.php`. `app/Http/Requests/StoreDireccionEntregaRequest.php` valida el origen plano y `app/Http/Requests/StoreDireccionCheckoutRequest.php` valida el origen anidado. `app/Http/Controllers/Api/DireccionEntregaController.php` integra ambos formatos con el registro existente; `routes/api.php` declara las rutas. Ambos orígenes usan el mismo modelo `DireccionEntrega` y el mismo `DireccionEntregaResource`.
 
-`tests/Feature/NormalizarDireccionEntregaTest.php` verifica P1, P2, P3 y otros errores. Los cuerpos ficticios para Postman están en `examples/tema23-p1-plano.json`, `examples/tema23-p2-checkout.json` y `examples/tema23-p3-incompleto.json`. Este README contiene el mapeo, el diagrama, las instrucciones y los resultados de la práctica.
+`tests/Feature/NormalizarDireccionEntregaTest.php` verifica P1, P2, P3 y otros errores. Este README contiene los cuerpos JSON ficticios para Postman, el mapeo, el diagrama, las instrucciones y los resultados de la práctica.
 
 ### Referencia del flujo del proyecto de aula
 
@@ -38,7 +38,7 @@ Envía `Content-Type: application/json` y `Accept: application/json`. El origen 
 | `lat` | `ubicacion.latitude` | `lat` | Número JSON entre −90 y 90; no aceptar cadenas numéricas. |
 | `lng` | `ubicacion.longitude` | `lng` | Número JSON entre −180 y 180; no aceptar cadenas numéricas. |
 
-En A las coordenadas son opcionales. En B se requieren `direccion`, `ubicacion` y ambas coordenadas, como ocurre en el flujo de entrega del checkout. B rechaza claves no permitidas dentro de esos dos objetos. Los campos opcionales pueden omitirse o enviarse como `null`. `clienteId` nunca viene en el cuerpo: el sistema original lo obtiene de la autenticación, que aquí se omitió. El traductor conserva los números recibidos sin redondearlos silenciosamente.
+En A las coordenadas son opcionales. En B se requieren `direccion`, `ubicacion` y ambas coordenadas, como ocurre en el flujo de entrega del checkout. B rechaza claves no permitidas dentro de esos dos objetos. Los campos opcionales pueden omitirse o enviarse como `null`. El traductor devuelve siempre las siete claves `etiqueta`, `direccion`, `telefono`, `observaciones`, `referencia`, `lat` y `lng`, en ese orden; los opcionales ausentes quedan en `null`. `clienteId` nunca viene en el cuerpo: el sistema original lo obtiene de la autenticación, que aquí se omitió. El traductor conserva los números recibidos sin redondearlos silenciosamente.
 
 P1, origen A plano:
 
@@ -55,7 +55,7 @@ P2, origen B anidado con el mismo significado:
 Los dos producen estos datos normalizados antes del registro:
 
 ```json
-{"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123","telefono":"0990000000","referencia":"Frente al parque","lat":-0.9580285,"lng":-80.6384797}
+{"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123","telefono":"0990000000","observaciones":null,"referencia":"Frente al parque","lat":-0.9580285,"lng":-80.6384797}
 ```
 
 ## Contrato de respuesta
@@ -161,8 +161,6 @@ Debe devolver **201 Created** con los mismos campos y tipos de dirección que P1
 
 Debe devolver **422** con errores para `direccion.etiqueta` y `ubicacion.longitude`, sin crear una fila.
 
-Estos cuerpos también están en `examples/tema23-p1-plano.json`, `examples/tema23-p2-checkout.json` y `examples/tema23-p3-incompleto.json`.
-
 Conserva una captura por caso que muestre la URL, el cuerpo, el estado HTTP y la respuesta. Usa solo datos ficticios.
 
 ## Pruebas automatizadas
@@ -174,7 +172,7 @@ php artisan test --compact tests/Feature/NormalizarDireccionEntregaTest.php
 php artisan test --compact
 ```
 
-La primera orden verifica P1, P2, P3, la separación entre `referencia` y `observaciones`, las coordenadas escritas como texto, los campos no permitidos y los rangos. La segunda comprueba también las prácticas anteriores. Ninguna modifica la base SQLite local.
+La primera orden verifica P1, P2, P3, el arreglo de siete claves devuelto directamente por el servicio, los opcionales ausentes, la separación entre `referencia` y `observaciones`, las coordenadas escritas como texto, los campos no permitidos y los rangos. La segunda comprueba también las prácticas anteriores. Ninguna modifica la base SQLite local.
 
 ## Resultados de las pruebas
 
@@ -184,7 +182,7 @@ La primera orden verifica P1, P2, P3, la separación entre `referencia` y `obser
 | P2 | JSON anidado equivalente | 201, mismos campos de dirección y tipos que P1. |
 | P3 | Faltan `direccion.etiqueta` y `ubicacion.longitude` | 422, errores por ambos campos y ninguna fila nueva. |
 
-La suite de esta práctica pasó **5 pruebas y 36 aserciones**; la suite completa pasó **15 pruebas y 112 aserciones**. La igualdad de P1 y P2 se comprueba sin comparar los valores generados `id` y `creadoAt`.
+La suite de esta práctica pasó **8 pruebas y 46 aserciones**; la suite completa pasó **18 pruebas y 122 aserciones**. La igualdad de P1 y P2 se comprueba sin comparar los valores generados `id` y `creadoAt`.
 
 ## Reflexión individual
 

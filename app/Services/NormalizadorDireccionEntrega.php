@@ -5,19 +5,29 @@ namespace App\Services;
 class NormalizadorDireccionEntrega
 {
     /**
-     * @param  array<string, mixed>  $entrada
-     * @return array<string, mixed>
+     * Recibe datos previamente validados por StoreDireccionEntregaRequest.
+     *
+     * @param  array{etiqueta: string, direccion: string, telefono?: ?string, observaciones?: ?string, referencia?: ?string, lat?: int|float|null, lng?: int|float|null}  $entrada
+     * @return array{etiqueta: string, direccion: string, telefono: ?string, observaciones: ?string, referencia: ?string, lat: int|float|null, lng: int|float|null}
      */
     public function desdeDirecciones(array $entrada): array
     {
-        return array_intersect_key($entrada, array_flip([
-            'etiqueta', 'direccion', 'telefono', 'observaciones', 'referencia', 'lat', 'lng',
-        ]));
+        return [
+            'etiqueta' => $entrada['etiqueta'],
+            'direccion' => $entrada['direccion'],
+            'telefono' => $entrada['telefono'] ?? null,
+            'observaciones' => $entrada['observaciones'] ?? null,
+            'referencia' => $entrada['referencia'] ?? null,
+            'lat' => $entrada['lat'] ?? null,
+            'lng' => $entrada['lng'] ?? null,
+        ];
     }
 
     /**
+     * Recibe datos previamente validados por StoreDireccionCheckoutRequest.
+     *
      * @param  array{direccion: array{etiqueta: string, direccion: string, telefono?: ?string, referencia?: ?string}, ubicacion: array{latitude: int|float, longitude: int|float}}  $entrada
-     * @return array<string, mixed>
+     * @return array{etiqueta: string, direccion: string, telefono: ?string, observaciones: null, referencia: ?string, lat: int|float, lng: int|float}
      */
     public function desdeCheckout(array $entrada): array
     {
@@ -28,6 +38,7 @@ class NormalizadorDireccionEntrega
             'etiqueta' => $direccion['etiqueta'],
             'direccion' => $direccion['direccion'],
             'telefono' => $direccion['telefono'] ?? null,
+            'observaciones' => null,
             'referencia' => $direccion['referencia'] ?? null,
             'lat' => $ubicacion['latitude'],
             'lng' => $ubicacion['longitude'],
