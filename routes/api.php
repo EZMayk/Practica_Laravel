@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DireccionEntregaController;
 use App\Http\Controllers\Api\EstadoController;
+use App\Http\Controllers\Api\ResumenSolicitudController;
 use App\Http\Controllers\Menu\CategoriasController;
 use App\Http\Controllers\Menu\ProductosController;
 use Illuminate\Http\Request;
@@ -16,6 +17,9 @@ Route::get('/user', function (Request $request) {
 
 Route::get('/estado', [EstadoController::class, 'index']
 );
+
+Route::get('/resumen-solicitud/{solicitudId}', [ResumenSolicitudController::class, 'show'])
+    ->whereNumber('solicitudId');
 
 Route::get('/productos', [ProductosController::class, 'listarProductos']
 );
