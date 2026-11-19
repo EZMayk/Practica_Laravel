@@ -35,12 +35,12 @@ return [
         ],
     ],
 
-    'usuarios' => [
-        'url' => env('SERVICIO_USUARIOS_URL', 'http://127.0.0.1:9001'),
+    'cobertura' => [
+        'url' => env('SERVICIO_COBERTURA_URL', 'http://127.0.0.1:9001'),
     ],
 
-    'estados' => [
-        'url' => env('SERVICIO_ESTADOS_URL', 'http://127.0.0.1:9001'),
+    'estimacion' => [
+        'url' => env('SERVICIO_ESTIMACION_URL', 'http://127.0.0.1:9002'),
     ],
 
 ];

@@ -1,20 +1,17 @@
 <?php
 
 /**
- * Servicios de prueba independientes (usuarios y estados) para la Práctica 3.3.
- *
- * Uso: php -S 127.0.0.1:9001 servicios/router.php
- *
- * Variable de entorno SERVICIO_MODO para simular fallos:
- *   normal (por defecto) | lento (responde en 5 s, supera el timeout de 3 s) | error (HTTP 500)
+ * Simula cobertura y estimación en procesos independientes.
+ * Iniciar con SERVICIO_TIPO=cobertura en :9001 o SERVICIO_TIPO=estimacion en :9002.
  */
 header('Content-Type: application/json');
 
-$correlationId = $_SERVER['HTTP_X_CORRELATION_ID'] ?? '-';
-$ruta = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$tipo = getenv('SERVICIO_TIPO') ?: 'cobertura';
 $modo = getenv('SERVICIO_MODO') ?: 'normal';
+$ruta = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$correlationId = $_SERVER['HTTP_X_CORRELATION_ID'] ?? '-';
 
-error_log("[servicio] {$ruta} correlation_id={$correlationId} modo={$modo}");
+error_log("[{$tipo}] {$ruta} correlation_id={$correlationId} modo={$modo}");
 
 if ($modo === 'lento') {
     sleep(5);
@@ -27,17 +24,33 @@ if ($modo === 'error') {
     return;
 }
 
-if ($ruta === '/usuarios/7') {
-    echo json_encode(['id' => 7, 'nombre' => 'Ana']);
+if (($tipo === 'cobertura' && $ruta !== '/cobertura')
+    || ($tipo === 'estimacion' && $ruta !== '/estimacion')
+    || ! in_array($tipo, ['cobertura', 'estimacion'], true)) {
+    http_response_code(404);
+    echo json_encode(['error' => 'no encontrado']);
 
     return;
 }
 
-if ($ruta === '/estados/101') {
-    echo json_encode(['solicitud_id' => 101, 'estado' => 'pendiente']);
+$lat = filter_input(INPUT_GET, 'lat', FILTER_VALIDATE_FLOAT);
+$lng = filter_input(INPUT_GET, 'lng', FILTER_VALIDATE_FLOAT);
+
+if ($lat === false || $lat === null || $lng === false || $lng === null) {
+    http_response_code(400);
+    echo json_encode(['error' => 'coordenadas inválidas']);
 
     return;
 }
 
-http_response_code(404);
-echo json_encode(['error' => 'no encontrado']);
+if ($tipo === 'cobertura') {
+    echo json_encode(['disponible' => $lat >= -1.1 && $lat <= -0.8 && $lng >= -80.8 && $lng <= -80.5]);
+
+    return;
+}
+
+$zonaCentral = $lat >= -1.0 && $lat <= -0.9 && $lng >= -80.7 && $lng <= -80.6;
+echo json_encode([
+    'costo_estimado' => $zonaCentral ? 2.5 : 4.0,
+    'tiempo_minutos' => $zonaCentral ? 30 : 45,
+]);
