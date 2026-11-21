@@ -1,7 +1,5 @@
 # Práctica individual 2.4 Seguridad en la integración del restaurante
 
-**Fecha de la práctica:** viernes 20 de noviembre de 2026, 23:00 (America/Guayaquil). **Estudiante:** Maykel Josue Menéndez Vélez. **Proyecto:** API Laravel para registro de direcciones y resumen de entrega.
-
 ## Problema y solución implementada
 
 El proyecto permitía registrar direcciones y consultar resúmenes de entrega sin identificar al cliente. La práctica aplica autenticación con tokens Bearer de Laravel Sanctum a esas rutas y autoriza la consulta del resumen únicamente al propietario de la dirección. Cada dirección nueva guarda internamente `user_id` del usuario autenticado; ese campo no se acepta desde el JSON del cliente ni se devuelve en el recurso. Una dirección antigua sin propietario permanece inaccesible hasta que se asigne de forma verificada a su dueño.
