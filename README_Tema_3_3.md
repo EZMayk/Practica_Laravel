@@ -2,6 +2,8 @@
 
 En el estado actual del proyecto, el POST de direcciones y el GET del resumen requieren el token Bearer del mismo cliente. Genera una dirección nueva con ese token según `README_Tema_2_4.md`; las direcciones anteriores sin propietario devuelven 403.
 
+Este GET realiza el cálculo de forma síncrona. La práctica 3.1 (`README_Tema_3_1.md`) usa el mismo resumen de entrega para comparar ese flujo con la publicación en una cola y el procesamiento posterior por un worker.
+
 ## Relación con el proyecto
 
 Esta práctica continúa el registro y la normalización de direcciones de entrega de las prácticas 2.2 y 2.3. El cliente registra una dirección mediante `POST /api/v1/clientes/direcciones` o su variante `/checkout`. Después, `GET /api/v1/clientes/direcciones/{id}/resumen-entrega` recupera esa dirección de SQLite y consulta dos servicios de prueba: cobertura y estimación de costo y tiempo. Laravel compone la respuesta y mantiene un `X-Correlation-ID` común en la petición, las consultas externas, la respuesta y los logs.
