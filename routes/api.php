@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\DireccionEntregaController;
 use App\Http\Controllers\Api\EstadoController;
 use App\Http\Controllers\Api\ResumenEntregaController;
+use App\Http\Controllers\Api\SolicitudResumenEntregaController;
 use App\Http\Controllers\Menu\CategoriasController;
 use App\Http\Controllers\Menu\ProductosController;
 use Illuminate\Http\Request;
@@ -13,6 +14,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/v1/clientes/direcciones/checkout', [DireccionEntregaController::class, 'storeDesdeCheckout']);
     Route::get('/v1/clientes/direcciones/{direccion}/resumen-entrega', [ResumenEntregaController::class, 'show'])
         ->whereNumber('direccion');
+    Route::post('/v1/clientes/resumenes-entrega', [SolicitudResumenEntregaController::class, 'store']);
+    Route::get('/v1/clientes/resumenes-entrega/{solicitud}', [SolicitudResumenEntregaController::class, 'show'])
+        ->whereNumber('solicitud');
 });
 
 Route::get('/user', function (Request $request) {

@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ServicioEntregaNoDisponible;
 use App\Http\Controllers\Controller;
-use App\Http\Middleware\AsegurarCorrelationId;
 use App\Http\Resources\DireccionEntregaResource;
 use App\Models\DireccionEntrega;
-use Illuminate\Http\Client\ConnectionException;
+use App\Services\CalculadorResumenEntrega;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ResumenEntregaController extends Controller
 {
-    public function show(Request $request, DireccionEntrega $direccion): JsonResponse
+    public function show(Request $request, DireccionEntrega $direccion, CalculadorResumenEntrega $calculador): JsonResponse
     {
         Gate::authorize('view', $direccion);
 
@@ -28,38 +27,13 @@ class ResumenEntregaController extends Controller
             ], 422);
         }
 
-        $cabeceras = [AsegurarCorrelationId::CABECERA => $correlationId];
-        $coordenadas = ['lat' => $direccion->lat, 'lng' => $direccion->lng];
-
         try {
-            $servicio = 'cobertura';
-            $respuestaCobertura = Http::connectTimeout(1)->timeout(3)
-                ->withHeaders($cabeceras)
-                ->get(config('services.cobertura.url').'/cobertura', $coordenadas);
-
-            $servicio = 'estimacion';
-            $respuestaEstimacion = Http::connectTimeout(1)->timeout(3)
-                ->withHeaders($cabeceras)
-                ->get(config('services.estimacion.url').'/estimacion', $coordenadas);
-        } catch (ConnectionException $e) {
+            $resultado = $calculador->calcular($direccion, $correlationId);
+        } catch (ServicioEntregaNoDisponible $exception) {
             Log::error('Servicio de entrega no disponible o sin respuesta', [
-                'servicio' => $servicio,
+                'servicio' => $exception->servicio,
                 'direccion_id' => $direccion->id,
-                'motivo' => $e->getMessage(),
-            ]);
-
-            return $this->errorControlado($correlationId);
-        }
-
-        if (! $respuestaCobertura->successful()
-            || ! is_bool($respuestaCobertura->json('disponible'))
-            || ! $respuestaEstimacion->successful()
-            || (! is_int($respuestaEstimacion->json('costo_estimado')) && ! is_float($respuestaEstimacion->json('costo_estimado')))
-            || ! is_int($respuestaEstimacion->json('tiempo_minutos'))) {
-            Log::error('Servicio de entrega respondió con error o datos inválidos', [
-                'direccion_id' => $direccion->id,
-                'cobertura_status' => $respuestaCobertura->status(),
-                'estimacion_status' => $respuestaEstimacion->status(),
+                'motivo' => $exception->getMessage(),
             ]);
 
             return $this->errorControlado($correlationId);
@@ -68,8 +42,8 @@ class ResumenEntregaController extends Controller
         return response()->json([
             'data' => [
                 'direccion' => (new DireccionEntregaResource($direccion))->toArray($request),
-                'cobertura' => $respuestaCobertura->json(),
-                'estimacion' => $respuestaCobertura->json('disponible') ? $respuestaEstimacion->json() : null,
+                'cobertura' => $resultado['cobertura'],
+                'estimacion' => $resultado['estimacion'],
                 'correlation_id' => $correlationId,
             ],
         ]);
