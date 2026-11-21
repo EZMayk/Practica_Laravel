@@ -1,24 +1,24 @@
 # Práctica individual de traducción y normalización de direcciones de entrega
 
-**Estado actual desde la práctica 2.4 (viernes 20 de noviembre de 2026):** ambos POST de direcciones requieren un token Bearer de Sanctum. Para repetir las pruebas manuales, genera un usuario y un token siguiendo `README_Tema_2_4.md`.
+En el estado actual del proyecto, ambos POST de direcciones requieren un token Bearer de Sanctum. Para repetir las pruebas, prepara el Cliente A y su token según `README_Tema_2_4.md`.
 
 ## Proceso y alcance
 
 **Estudiante:** Maykel Menendez. **Proceso:** registrar una dirección de entrega para pedidos a domicilio. **Actores de referencia:** pantalla móvil de direcciones, checkout móvil y API. **Objetivo:** traducir dos estructuras de entrada a un contrato JSON plano común.
 
-Esta es una adaptación educativa independiente del sistema de restaurante. En el proyecto de aula, ambos flujos móviles envían finalmente un JSON plano al backend Java. El checkout, antes del envío, mantiene por separado los campos de dirección y un objeto de ubicación. Esta práctica usa ese estado interno como un segundo formato JSON de entrada; **no afirma que el backend Java tenga una ruta anidada**. Aquí tampoco se implementan autenticación ni `clienteId`.
+Esta práctica implementa en Laravel la normalización de dos formas de entrada para la misma dirección del proyecto: campos planos de la pantalla de direcciones y datos anidados del checkout. Ambos terminan en el mismo modelo y contrato de respuesta. El identificador del cliente se obtiene del token autenticado; no se acepta en el JSON.
 
-## Archivos de entrega
+## Componentes de la implementación
 
 El traductor está en `app/Services/NormalizadorDireccionEntrega.php`. `app/Http/Requests/StoreDireccionEntregaRequest.php` valida el origen plano y `app/Http/Requests/StoreDireccionCheckoutRequest.php` valida el origen anidado. `app/Http/Controllers/Api/DireccionEntregaController.php` integra ambos formatos con el registro existente; `routes/api.php` declara las rutas. Ambos orígenes usan el mismo modelo `DireccionEntrega` y el mismo `DireccionEntregaResource`.
 
 `tests/Feature/NormalizarDireccionEntregaTest.php` verifica P1, P2, P3 y otros errores. Este README contiene los cuerpos JSON ficticios para Postman, el mapeo, el diagrama, las instrucciones y los resultados de la práctica.
 
-### Referencia del flujo del proyecto de aula
+### Flujo del proyecto de aula
 
-La pantalla móvil «Direcciones» construye campos planos de texto y puede enviar `observaciones`; normalmente no captura coordenadas. El checkout reúne un formulario `direccion` y una `ubicacion` con `latitude` y `longitude`; antes de llamar a la API real los aplana como `lat` y `lng`. Para P1 se envían coordenadas en el formato plano que el contrato del backend admite, aunque la pantalla «Direcciones» no las envíe actualmente. Así P1 y P2 representan exactamente la misma dirección.
+La pantalla móvil «Direcciones» construye campos planos de texto y puede enviar `observaciones`; normalmente no captura coordenadas. El checkout reúne un formulario `direccion` y una `ubicacion` con `latitude` y `longitude`. El backend Laravel recibe ambos formatos y los traduce a `lat` y `lng` del contrato común. Para P1 se envían coordenadas en el formato plano que el contrato admite, aunque la pantalla «Direcciones» no las envíe normalmente. Así P1 y P2 representan la misma dirección.
 
-| Diferencia | Origen A plano | Origen B anidado de esta práctica |
+| Diferencia | Origen A plano | Origen B checkout |
 | --- | --- | --- |
 | Estructura | Campos en la raíz | Campos bajo `direccion` y `ubicacion` |
 | Nombres de coordenadas | `lat` y `lng` | `latitude` y `longitude` |
@@ -28,7 +28,7 @@ La pantalla móvil «Direcciones» construye campos planos de texto y puede envi
 
 ## Contrato de solicitud
 
-Envía `Content-Type: application/json` y `Accept: application/json`. El origen A usa `POST /api/v1/clientes/direcciones`, la ruta plana existente. El origen B usa `POST /api/v1/clientes/direcciones/checkout`, agregada solo a esta adaptación Laravel.
+Envía `Content-Type: application/json` y `Accept: application/json`. El origen A usa `POST /api/v1/clientes/direcciones`, la ruta plana existente. El origen B usa `POST /api/v1/clientes/direcciones/checkout`.
 
 | Origen A plano | Origen B checkout | Contrato común | Regla de transformación y validación |
 | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ Envía `Content-Type: application/json` y `Accept: application/json`. El origen 
 | `lat` | `ubicacion.latitude` | `lat` | Número JSON entre −90 y 90; no aceptar cadenas numéricas. |
 | `lng` | `ubicacion.longitude` | `lng` | Número JSON entre −180 y 180; no aceptar cadenas numéricas. |
 
-En A las coordenadas son opcionales. En B se requieren `direccion`, `ubicacion` y ambas coordenadas, como ocurre en el flujo de entrega del checkout. B rechaza claves no permitidas dentro de esos dos objetos. Los campos opcionales pueden omitirse o enviarse como `null`. El traductor devuelve siempre las siete claves `etiqueta`, `direccion`, `telefono`, `observaciones`, `referencia`, `lat` y `lng`, en ese orden; los opcionales ausentes quedan en `null`. `clienteId` nunca viene en el cuerpo: el sistema original lo obtiene de la autenticación, que aquí se omitió. El traductor conserva los números recibidos sin redondearlos silenciosamente.
+En A las coordenadas son opcionales. En B se requieren `direccion`, `ubicacion` y ambas coordenadas, como ocurre en el flujo de entrega del checkout. B rechaza claves no permitidas dentro de esos dos objetos. Los campos opcionales pueden omitirse o enviarse como `null`. El traductor devuelve siempre las siete claves `etiqueta`, `direccion`, `telefono`, `observaciones`, `referencia`, `lat` y `lng`, en ese orden; los opcionales ausentes quedan en `null`. `clienteId` nunca viene en el cuerpo: el backend identifica al cliente mediante Sanctum y asocia internamente su `user_id`. El traductor conserva los números recibidos sin redondearlos silenciosamente.
 
 P1, origen A plano:
 
@@ -64,7 +64,7 @@ Los dos producen estos datos normalizados antes del registro:
 
 Una entrada válida registra la dirección y devuelve **HTTP 201 Created** con un objeto `data`. Este contiene `id` entero, `etiqueta` y `direccion` como textos, `telefono`, `observaciones` y `referencia` como textos o `null`, `lat` y `lng` como números o `null`, `activa` como booleano y `creadoAt` como fecha ISO 8601. P1 y P2 deben tener los mismos valores y tipos de dirección; `id` y `creadoAt` se generan por separado.
 
-Una entrada inválida devuelve **HTTP 422** con `message` y `errors`, cuyas claves identifican los campos rechazados. P3 omite `direccion.etiqueta` y `ubicacion.longitude`, así que ambas claves aparecen en `errors` y no se guarda una fila. El texto del mensaje puede variar con el idioma configurado. Estos códigos pertenecen a la adaptación Laravel; el backend Java original responde con 200 al registrar y 400 ante errores de validación.
+Una entrada inválida devuelve **HTTP 422** con `message` y `errors`, cuyas claves identifican los campos rechazados. P3 omite `direccion.etiqueta` y `ubicacion.longitude`, así que ambas claves aparecen en `errors` y no se guarda una fila. El texto del mensaje puede variar con el idioma configurado.
 
 ## Cómo ocurre el intercambio
 
@@ -100,7 +100,7 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env; php artisan key:genera
 if (-not (Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File | Out-Null }
 ```
 
-En `.env`, deja `DB_CONNECTION=sqlite` y `DB_DATABASE` sin definir o comentado. Si `.env` ya existía y `APP_KEY` está vacío, ejecuta `php artisan key:generate --no-interaction`. No incluyas `.env` en la entrega.
+En `.env`, deja `DB_CONNECTION=sqlite` y `DB_DATABASE` sin definir o comentado. Si `.env` ya existía y `APP_KEY` está vacío, ejecuta `php artisan key:generate --no-interaction`. No publiques `.env` ni su contenido.
 
 ```powershell
 php artisan config:clear --no-interaction
@@ -112,7 +112,7 @@ Deja abierta esa terminal mientras pruebas. Si el puerto 8000 está ocupado, usa
 
 ## Pruebas manuales en Postman
 
-En las tres solicitudes selecciona **POST** y **Authorization → Bearer Token** con el token de prueba de `README_Tema_2_4.md`. En **Headers** agrega `Content-Type: application/json` y `Accept: application/json`. En **Body → raw → JSON**, pega el cuerpo correspondiente y pulsa **Send**.
+En las tres solicitudes selecciona **POST** y **Authorization → Bearer Token** con `{{tokenA}}` del entorno local preparado según `README_Tema_2_4.md`. En **Headers** agrega `Content-Type: application/json` y `Accept: application/json`. En **Body → raw → JSON**, pega el cuerpo correspondiente y pulsa **Send**.
 
 **P1. Origen A plano.** URL: `http://localhost:8000/api/v1/clientes/direcciones`. Pega:
 
@@ -163,7 +163,7 @@ Debe devolver **201 Created** con los mismos campos y tipos de dirección que P1
 
 Debe devolver **422** con errores para `direccion.etiqueta` y `ubicacion.longitude`, sin crear una fila.
 
-Conserva una captura por caso que muestre la URL, el cuerpo, el estado HTTP y la respuesta. Usa solo datos ficticios.
+Compara los códigos HTTP y los campos JSON de P1, P2 y P3. Usa solo datos ficticios y comprueba que P3 no añada una fila.
 
 ## Pruebas automatizadas
 
@@ -184,7 +184,7 @@ La primera orden verifica P1, P2, P3, el arreglo de siete claves devuelto direct
 | P2 | JSON anidado equivalente | 201, mismos campos de dirección y tipos que P1. |
 | P3 | Faltan `direccion.etiqueta` y `ubicacion.longitude` | 422, errores por ambos campos y ninguna fila nueva. |
 
-La suite de esta práctica pasó **8 pruebas y 46 aserciones**; la suite completa pasó **18 pruebas y 122 aserciones**. La igualdad de P1 y P2 se comprueba sin comparar los valores generados `id` y `creadoAt`.
+La suite de esta práctica comprueba la igualdad de P1 y P2 sin comparar los valores generados `id` y `creadoAt`. Al ejecutar la suite completa también se comprueban las prácticas posteriores del repositorio.
 
 ## Reflexión individual
 

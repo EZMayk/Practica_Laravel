@@ -29,20 +29,32 @@ git check-ignore .env
 git ls-files .env
 ```
 
-El primer comando debe mostrar `.env` y el segundo no debe mostrar nada. No incluyas el contenido de `.env`, contraseñas ni tokens en capturas. En producción configura `APP_DEBUG=false`, usa HTTPS para Postman/cliente → Laravel y TLS para Laravel → servicios de cobertura y estimación. Las URL locales `http://127.0.0.1` de este laboratorio **no cifran** el tráfico; solo deben usarse en localhost. Configura las URL HTTPS en variables de entorno al desplegar y verifica los certificados del servidor. No desactives la verificación TLS del cliente HTTP.
+El primer comando debe mostrar `.env` y el segundo no debe mostrar nada. No publiques el contenido de `.env`, contraseñas ni tokens. Configura `APP_DEBUG=false` también al verificar respuestas de error para que Laravel no exponga trazas. En producción usa HTTPS entre cliente y Laravel y TLS entre Laravel y los servicios de cobertura y estimación. Las URL locales `http://127.0.0.1` de este laboratorio solo deben usarse en localhost. Configura las URL HTTPS en variables de entorno al desplegar y verifica los certificados del servidor.
 
-## Preparación local para Postman
+## Reproducir la implementación
 
-1. En la raíz del proyecto, ejecuta `php artisan migrate --no-interaction`. Las direcciones registradas antes de esta práctica tienen `user_id` vacío; **registra una dirección nueva con el token de Cliente A** para estas pruebas.
-2. Abre tres terminales en la raíz del proyecto y mantenlas abiertas durante P1:
+1. Desde la raíz del repositorio, prepara PHP 8.3 con `pdo_sqlite`, Composer y una base SQLite local:
+
+   ```powershell
+   composer install
+   if (-not (Test-Path .env)) { Copy-Item .env.example .env; php artisan key:generate --no-interaction }
+   if (-not (Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File | Out-Null }
+   php artisan config:clear --no-interaction
+   php artisan migrate --no-interaction
+   ```
+
+   En `.env`, utiliza `DB_CONNECTION=sqlite`, deja `DB_DATABASE` sin definir y configura `APP_DEBUG=false` para probar también los errores. Si `.env` ya existía y `APP_KEY` está vacío, ejecuta `php artisan key:generate --no-interaction`. Las direcciones registradas antes de esta práctica tienen `user_id` vacío; se debe crear una dirección nueva para verificar la propiedad.
+2. Abre tres terminales en la raíz del proyecto y mantenlas activas durante el caso autorizado:
 
    ```powershell
    # Terminal 1: cobertura
+   Remove-Item Env:SERVICIO_MODO -ErrorAction SilentlyContinue
    $env:SERVICIO_TIPO='cobertura'; php -S 127.0.0.1:9001 servicios/router.php
    ```
 
    ```powershell
    # Terminal 2: estimación
+   Remove-Item Env:SERVICIO_MODO -ErrorAction SilentlyContinue
    $env:SERVICIO_TIPO='estimacion'; php -S 127.0.0.1:9002 servicios/router.php
    ```
 
@@ -51,31 +63,33 @@ El primer comando debe mostrar `.env` y el segundo no debe mostrar nada. No incl
    php artisan serve --host=127.0.0.1 --port=8000 --no-interaction
    ```
 
-   Las terminales 1 y 2 son necesarias para que el GET autorizado devuelva 200. P2 y P3 devuelven 401 y 403 antes de llamar a esos servicios.
-3. Crea dos usuarios ficticios y sus tokens temporales en una consola local con `php artisan tinker`. Pega cada línea por separado:
+   Cobertura y estimación son necesarias para que el GET autorizado devuelva 200. Las respuestas 401 y 403 ocurren antes de llamarlos.
+3. Crea dos usuarios ficticios y tokens temporales en una cuarta terminal con `php artisan tinker`. Ejecuta cada línea por separado:
 
    ```php
    use App\Models\User;
    use Illuminate\Support\Str;
    $clienteA = User::firstOrCreate(['email' => 'cliente.a@example.test'], ['name' => 'Cliente A de prueba', 'password' => Str::random(40)]);
    $clienteB = User::firstOrCreate(['email' => 'cliente.b@example.test'], ['name' => 'Cliente B de prueba', 'password' => Str::random(40)]);
+   $clienteA->tokens()->where('name', 'practica-2-4-a')->delete();
+   $clienteB->tokens()->where('name', 'practica-2-4-b')->delete();
    $clienteA->createToken('practica-2-4-a', ['*'], now()->addHour())->plainTextToken;
    $clienteB->createToken('practica-2-4-b', ['*'], now()->addHour())->plainTextToken;
    ```
 
-   Copia cada token **solo a una variable local de Postman** (`tokenA` y `tokenB`). No guardes esos valores en el repositorio ni exportes el entorno de Postman con ellos. Cierra la consola de Tinker cuando termines. Los correos `example.test` y los nombres son ficticios; las contraseñas se generan aleatoriamente y no se muestran.
-4. En Postman, usa `Accept: application/json`. En la pestaña **Authorization** selecciona **Bearer Token** y escribe `{{tokenA}}` o `{{tokenB}}` según el caso. **Antes de fotografiar Postman, verifica que el valor del token no esté visible** en Authorization, Headers, Console ni en la barra lateral.
+   Conserva los valores devueltos solo en el entorno local de Postman. Crea las variables `tokenA` y `tokenB` con esa escritura exacta: Postman distingue mayúsculas de minúsculas. Pega cada token completo, incluido el prefijo numérico y `|`, sin comillas ni la palabra `Bearer`. No agregues headers personalizados llamados `tokenA` o `tokenB`, no exportes esos valores y no los incluyas en el repositorio. Cierra Tinker al terminar. Los correos `example.test` y los nombres son ficticios; las contraseñas se generan aleatoriamente.
+4. En Postman selecciona el entorno local, agrega `Accept: application/json` y usa **Authorization → Bearer Token** con `{{tokenA}}` o `{{tokenB}}` según el caso. Postman construye la cabecera `Authorization`; elimina cualquier cabecera `Authorization` agregada manualmente. Los tokens caducan en una hora: si una solicitud posterior devuelve 401, genera otros con el paso 3.
 
-## Pruebas y evidencias P1 a P4
+## Verificación manual de acceso
 
-Ejecuta los casos en este orden. Conserva en cada captura el método, la URL, el código HTTP y el JSON de respuesta. No fotografíes la consola que imprimió los tokens.
+Ejecuta los casos en este orden y compara el código HTTP y las claves JSON. Usa siempre el mismo ID de dirección creado por el Cliente A.
 
-| Caso | Acción en Postman | Resultado que se debe capturar |
+| Caso | Solicitud y comprobación | Resultado esperado |
 | --- | --- | --- |
-| **P1, autorizado** | Con `{{tokenA}}`, envía `POST http://127.0.0.1:8000/api/v1/clientes/direcciones` con el JSON de abajo. Copia `data.id`. Luego consulta el GET del resumen para ese mismo ID con `{{tokenA}}` y ambos servicios activos. | POST **201** y GET **200** con `data.direccion.id`, `data.cobertura` y `data.estimacion`. Una captura de cada respuesta si el espacio lo permite. |
-| **P2, sin autenticación** | En el mismo GET, selecciona **No Auth** y elimina cualquier header `Authorization` agregado manualmente. Pulsa Send. | **401 Unauthorized** y mensaje JSON; ninguna información de la dirección. |
-| **P3, sin permiso** | En ese mismo GET y con el mismo ID de la dirección de A, cambia a Bearer `{{tokenB}}`. Pulsa Send. | **403 Forbidden**; ninguna información de la dirección. |
-| **P4, secretos** | En VS Code o una terminal, muestra `.gitignore` y la salida de los dos comandos de comprobación anteriores. | `.env` está excluido y `git ls-files .env` no devuelve ninguna ruta. No abras el contenido de `.env`. |
+| **P1, autorizado** | Con `{{tokenA}}`, envía `POST http://127.0.0.1:8000/api/v1/clientes/direcciones` con el JSON de abajo. Lee el número de `data.id` y envía `GET http://127.0.0.1:8000/api/v1/clientes/direcciones/{id}/resumen-entrega`, sustituyendo `{id}` por ese número, con `{{tokenA}}` y ambos servicios activos. | POST **201** con `data.id`; GET **200** con el mismo `data.direccion.id`, `data.cobertura` y `data.estimacion`. |
+| **P2, sin autenticación** | Repite el mismo GET con **No Auth** y sin cabecera `Authorization` manual. | **401 Unauthorized**, `message: "Unauthenticated."`, sin datos de la dirección. |
+| **P3, sin permiso** | Repite el mismo GET y el mismo ID con Bearer `{{tokenB}}`. | **403 Forbidden** y `message: "This action is unauthorized."`, sin datos de la dirección. |
+| **P4, secretos** | Ejecuta `git check-ignore .env` y `git ls-files .env`; revisa la regla `.env` en `.gitignore` sin abrir el archivo `.env`. | El primer comando muestra `.env`; el segundo no devuelve rutas. |
 
 JSON ficticio para el POST de P1:
 
@@ -83,7 +97,7 @@ JSON ficticio para el POST de P1:
 {"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123","lat":-0.9580285,"lng":-80.6384797}
 ```
 
-**P3 se prueba con la dirección creada por A, no con una dirección de B.** El cliente B sí puede registrar sus propias direcciones, pero no leer el resumen de A. Si el GET de P1 devuelve 502, comprueba que cobertura y estimación están activos; ese resultado corresponde a la práctica 3.3, no a una falla de autenticación.
+**P3 usa la dirección creada por A**, aunque B también pueda registrar direcciones propias. Si el GET de P1 devuelve 502, comprueba que cobertura y estimación siguen activos en modo normal; ese resultado significa que falló una dependencia del resumen, no la autenticación. Si P3 devuelve una traza, comprueba `APP_DEBUG=false` y reinicia Laravel.
 
 ## Resultados verificados en el código
 
@@ -93,8 +107,8 @@ Las pruebas automatizadas usan SQLite en memoria y respuestas HTTP simuladas, si
 php artisan test --compact
 ```
 
-Resultado local: **35 pruebas y 182 aserciones correctas**. Las capturas P1–P3 de Postman quedan pendientes de ejecutar y pegar por el estudiante; esta cifra de pruebas automatizadas no sustituye esas evidencias manuales.
+Resultado de referencia: **35 pruebas y 182 aserciones correctas**. La suite automatizada verifica el comportamiento de la aplicación; los casos manuales anteriores permiten repetirlo contra los servicios locales.
 
 ## Reflexión individual
 
-**Problema resuelto:** un consumidor anónimo o un cliente diferente podía acceder al flujo de direcciones y resúmenes de entrega. **Decisión técnica:** reutilizar Sanctum instalado y una política de propiedad vinculada a `user_id`, sin introducir dependencias. **Verificación:** solicitudes 2xx, 401 y 403 en pruebas automatizadas y el procedimiento P1–P4 en Postman; la revisión de `.gitignore` confirma que `.env` no se publica.
+**Problema resuelto:** un consumidor anónimo o un cliente diferente podía acceder al flujo de direcciones y resúmenes de entrega. **Decisión técnica:** reutilizar Sanctum instalado y una política de propiedad vinculada a `user_id`, sin introducir dependencias. **Verificación:** solicitudes 2xx, 401 y 403 en pruebas automatizadas y manuales; la revisión de `.gitignore` confirma que `.env` no se publica.

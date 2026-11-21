@@ -1,6 +1,6 @@
 # Práctica 3.3 – Orquestación de un resumen de entrega
 
-**Estado actual desde la práctica 2.4 (viernes 20 de noviembre de 2026):** el POST de direcciones y el GET del resumen requieren el token Bearer del mismo cliente. Genera una dirección nueva con ese token según `README_Tema_2_4.md`; las direcciones anteriores sin propietario devuelven 403.
+En el estado actual del proyecto, el POST de direcciones y el GET del resumen requieren el token Bearer del mismo cliente. Genera una dirección nueva con ese token según `README_Tema_2_4.md`; las direcciones anteriores sin propietario devuelven 403.
 
 ## Relación con el proyecto
 
@@ -37,17 +37,19 @@ php artisan config:clear --no-interaction
 php artisan migrate --no-interaction
 ```
 
-Las peticiones manuales de Postman usarán esa SQLite local y crearán una dirección ficticia. Las pruebas automatizadas, en cambio, usan SQLite en memoria y no alteran ese archivo.
+Las peticiones manuales de Postman usarán esa SQLite local y crearán una dirección ficticia. Las pruebas automatizadas usan SQLite en memoria y no alteran ese archivo. Para preparar las credenciales y comprobar la matriz de acceso, sigue `README_Tema_2_4.md`.
 
 Abre **tres terminales** en la raíz del proyecto y déjalas abiertas mientras pruebas. Si alguno de los puertos ya está en uso, libera ese puerto antes de empezar.
 
 ```powershell
 # Terminal 1: servicio de cobertura, puerto 9001
+Remove-Item Env:SERVICIO_MODO -ErrorAction SilentlyContinue
 $env:SERVICIO_TIPO='cobertura'; php -S 127.0.0.1:9001 servicios/router.php
 ```
 
 ```powershell
 # Terminal 2: servicio de estimación, puerto 9002
+Remove-Item Env:SERVICIO_MODO -ErrorAction SilentlyContinue
 $env:SERVICIO_TIPO='estimacion'; php -S 127.0.0.1:9002 servicios/router.php
 ```
 
@@ -56,9 +58,9 @@ $env:SERVICIO_TIPO='estimacion'; php -S 127.0.0.1:9002 servicios/router.php
 php artisan serve --host=127.0.0.1 --port=8000 --no-interaction
 ```
 
-## Preparar la dirección en Postman
+## Preparar la dirección de prueba
 
-1. Crea una petición **POST** a `http://127.0.0.1:8000/api/v1/clientes/direcciones`. En **Authorization → Bearer Token**, usa el token del Cliente A obtenido siguiendo `README_Tema_2_4.md`. En **Headers**, añade `Content-Type: application/json` y `Accept: application/json`; en **Body → raw → JSON**, pega:
+1. Crea una petición **POST** a `http://127.0.0.1:8000/api/v1/clientes/direcciones`. En **Authorization → Bearer Token**, usa `{{tokenA}}` del entorno local preparado según `README_Tema_2_4.md`. En **Headers**, añade `Content-Type: application/json` y `Accept: application/json`; en **Body → raw → JSON**, pega:
 
 ```json
 {"etiqueta":"Casa de prueba","direccion":"Calle Ficticia 123","lat":-0.9580285,"lng":-80.6384797}
@@ -69,40 +71,33 @@ php artisan serve --host=127.0.0.1 --port=8000 --no-interaction
 
 La cobertura simulada considera disponible el rectángulo de latitud −1.1 a −0.8 y longitud −80.8 a −80.5. La estimación simulada usa costo 2.5 y 30 minutos en la zona central; fuera de ella usa 4.0 y 45 minutos. Estos valores son únicamente datos de demostración.
 
-## Capturas para el DOCX
+## Verificación manual del orquestador
 
-Haz las pruebas en este orden, usando siempre el GET de la dirección nueva creada con el token del Cliente A. Las capturas **1 y 3 son de Postman**: muestran el resultado exitoso y el fallo. La **captura 4 es del archivo de registro abierto en VS Code**, porque ese detalle interno no aparece en Postman. Las capturas 2 y 5 también son de Postman; 6 y 7 son comprobaciones adicionales de los servicios y las pruebas. Si solo necesitas las evidencias solicitadas en la actividad, prioriza 1, 3 y 4.
+Usa la dirección creada en el paso anterior y el token del mismo Cliente A durante todas las consultas. Mantén cobertura, estimación y Laravel activos para la primera comprobación.
 
-1. **Captura 1 – resultado exitoso 200 (obligatoria).** Con los tres procesos activos, envía el GET guardado. Comprueba `data.direccion.id` igual al ID copiado, `data.cobertura.disponible: true`, `data.estimacion.costo_estimado: 2.5`, `data.estimacion.tiempo_minutos: 30` y `data.correlation_id: entrega-001`. La respuesta debe incluir también `X-Correlation-ID: entrega-001` en **Headers**. Captura Postman mostrando URL, **200 OK** y JSON. Si quieres mostrar el registro previo, toma aparte una captura del POST **201**.
-2. **Captura 2 – ID generado (complementaria).** Desactiva el header `X-Correlation-ID` en el GET y envíalo de nuevo. Comprueba que `data.correlation_id` contiene un UUID; en la pestaña **Headers** de la respuesta verifica que `X-Correlation-ID` tiene el mismo valor. Captura el JSON y, si quieres demostrar también la cabecera, toma una segunda imagen de esa pestaña.
-3. **Captura 3 – servicio caído y 502 (obligatoria).** En la terminal 2 pulsa **Ctrl+C** para detener solo estimación; deja activos cobertura y Laravel. Activa de nuevo el header del GET y cámbialo a `X-Correlation-ID: entrega-fallo-001`. Envía la petición. Debe devolver **502 Bad Gateway** con `mensaje` y `correlation_id: entrega-fallo-001`, sin `trace`, `exception`, `file` ni `line`. Captura URL, estado y JSON.
-4. **Captura 4 – error en el log (obligatoria).** **No enciendas todavía la terminal 2.** Después de la captura 3, cobertura (terminal 1) y Laravel (terminal 3) siguen activos; estimación (terminal 2) sigue detenida. Tampoco vuelvas a enviar el GET: el fallo ya quedó registrado. En VS Code abre `storage/logs/laravel.log` desde el explorador de archivos y pulsa **Ctrl+F**. Busca `entrega-fallo-001`. En la coincidencia más reciente verás `local.ERROR: Servicio de entrega no disponible o sin respuesta`, `"correlation_id":"entrega-fallo-001"`, `"servicio":"estimacion"` y `"direccion_id"` con el ID nuevo que copiaste del POST. **Captura esa línea visible en el editor de VS Code.** Este es el registro del error que produjo el **502** de Postman en la captura 3. Si no encuentras la línea, conserva la terminal 2 detenida y repite solo el GET de la captura 3 con ese mismo `X-Correlation-ID`.
-5. **Captura 5 – timeout (complementaria, en Postman).** Ahora sí vuelve a usar la terminal 2, que sigue detenida. Mantén cobertura (terminal 1) y Laravel (terminal 3) activos. En la terminal 2 ejecuta:
+1. **Respuesta compuesta.** Envía el GET con `X-Correlation-ID: entrega-001`. Debe devolver **200 OK** con `data.direccion.id` igual al ID del POST, `data.cobertura.disponible: true`, `data.estimacion.costo_estimado: 2.5`, `data.estimacion.tiempo_minutos: 30` y `data.correlation_id: entrega-001`. Comprueba que la cabecera de respuesta `X-Correlation-ID` contiene el mismo valor.
+2. **ID generado.** Desactiva la cabecera `X-Correlation-ID` en ese GET y vuelve a enviarlo. Debe devolver **200** con un UUID en `data.correlation_id`; la cabecera de respuesta debe coincidir. Vuelve a activar la cabecera para las siguientes pruebas.
+3. **Servicio no disponible.** En la terminal 2, detén solo estimación con **Ctrl+C**; deja activos cobertura y Laravel. En el GET usa `X-Correlation-ID: entrega-fallo-001` y envíalo. Debe devolver **502 Bad Gateway** con `mensaje` y `correlation_id: entrega-fallo-001`, sin `trace`, `exception`, `file` ni `line`.
+4. **Registro del error.** Con estimación todavía detenida, busca `entrega-fallo-001` en `storage/logs/laravel.log`. La entrada del error debe contener ese `correlation_id`, `servicio: estimacion` y el ID de la dirección. El detalle técnico queda en el log, no en el JSON enviado al cliente.
+5. **Timeout.** En la terminal 2, inicia estimación en modo lento:
 
    ```powershell
    $env:SERVICIO_TIPO='estimacion'; $env:SERVICIO_MODO='lento'; php -S 127.0.0.1:9002 servicios/router.php
    ```
 
-   En Postman usa el mismo GET de la dirección nueva, cambia el header a `X-Correlation-ID: entrega-lento-001` y pulsa **Send**. El servicio tarda 5 segundos y Laravel corta la espera a los 3 segundos: verás **502**, `mensaje` y `correlation_id: entrega-lento-001`. **Captura Postman mostrando URL, 502, JSON y tiempo de respuesta.** Al terminar, detén solo la terminal 2 con **Ctrl+C**; las terminales 1 y 3 permanecen activas.
-6. **Captura 6 – mismo ID en los dos servicios (complementaria).** Después de la captura 5, la terminal 2 vuelve a estar detenida. Inicia allí estimación en modo normal:
+   Envía el mismo GET con `X-Correlation-ID: entrega-lento-001`. El servicio tarda 5 segundos y el orquestador interrumpe la consulta después de 3 segundos: debe devolver **502** con ese `correlation_id`. Detén estimación con **Ctrl+C** al terminar.
+6. **Recuperación.** Reinicia la terminal 2 en modo normal:
 
    ```powershell
    Remove-Item Env:SERVICIO_MODO -ErrorAction SilentlyContinue
    $env:SERVICIO_TIPO='estimacion'; php -S 127.0.0.1:9002 servicios/router.php
    ```
 
-   En Postman cambia el header a `X-Correlation-ID: entrega-rastreo-001` y pulsa **Send** en el GET de la dirección nueva. Debes recibir **200**. Para verificar que los dos servicios recibieron el ID, mira las líneas más recientes de sus terminales: una contiene `[cobertura] /cobertura correlation_id=entrega-rastreo-001` y la otra `[estimacion] /estimacion correlation_id=entrega-rastreo-001`. Esta comprobación **se captura en las dos terminales**, porque Postman solo muestra la respuesta del orquestador. Puedes omitirla si tu entrega solo requiere las evidencias principales.
-7. **Captura 7 – pruebas automatizadas (complementaria).** Esta comprobación es de **la salida de PHPUnit, no de Postman**. Abre otra terminal en la raíz del proyecto y ejecuta:
+   Repite el GET con `X-Correlation-ID: entrega-rastreo-001`. Debe regresar **200**. Las terminales de cobertura y estimación deben registrar ese mismo ID en sus respectivas solicitudes. Esto confirma la propagación entre procesos y que el flujo vuelve a funcionar tras el fallo.
 
-   ```powershell
-   php artisan test --compact tests/Feature/ResumenEntregaTest.php
-   ```
+Como variante, detén estimación y reiníciala con `$env:SERVICIO_TIPO='estimacion'; $env:SERVICIO_MODO='error'; php -S 127.0.0.1:9002 servicios/router.php`. El servicio devuelve 500 y Laravel responde 502. Después, detén el proceso, limpia `SERVICIO_MODO` y vuelve a iniciarlo en modo normal.
 
-   Cuando termine, captura el comando y la línea final con 8 pruebas y 38 aserciones correctas. Las pruebas usan SQLite en memoria y `Http::fake()`; no dependen de que los tres servidores estén activos. Puedes omitir esta captura si tu entrega solo requiere las evidencias principales.
-
-Para probar además un error HTTP **500** sin detener un servicio, reinicia la terminal 2 con `$env:SERVICIO_TIPO='estimacion'; $env:SERVICIO_MODO='error'; php -S 127.0.0.1:9002 servicios/router.php` y repite el GET. El orquestador debe responder **502**. Al terminar, limpia el modo con `Remove-Item Env:SERVICIO_MODO -ErrorAction SilentlyContinue`.
-
-## Comparación que debes explicar
+## Comparación de resultados
 
 | Observación | Flujo normal | Estimación caída o lenta |
 | --- | --- | --- |
@@ -112,10 +107,6 @@ Para probar además un error HTTP **500** sin detener un servicio, reinicia la t
 | Detalle técnico | No aplica | Solo en `storage/logs/laravel.log` |
 
 Una dirección inexistente devuelve **404** y una dirección sin coordenadas **422** antes de llamar a los servicios. El **502** documenta el comportamiento del orquestador cuando falla una capacidad externa.
-
-## Preparar la entrega
-
-Continúa en el documento existente `docs/Practica_3_3.docx`. Pega la captura 4 del registro junto a las capturas 1 y 3 de Postman. Las capturas 2 y 5 a 7 son complementarias; si no las incluyes, elimina sus recuadros vacíos antes de exportar el DOCX como PDF. Entrega ese PDF junto con el enlace del repositorio, o ambos dentro de un ZIP, según indique el docente. La carpeta `docs/` está excluida de Git, por lo que debes adjuntar el PDF por separado si entregas un enlace al repositorio.
 
 ## Pruebas automatizadas
 

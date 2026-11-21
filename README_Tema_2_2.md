@@ -1,29 +1,29 @@
 # Práctica individual de contrato JSON y dirección de entrega
 
-**Estado actual desde la práctica 2.4 (viernes 20 de noviembre de 2026):** el POST requiere un token Bearer de Sanctum. La explicación histórica de esta práctica describe la implementación inicial; para volver a ejecutar sus pruebas manuales, genera un usuario y un token siguiendo `README_Tema_2_4.md`.
+En el estado actual del proyecto, el POST requiere un token Bearer de Sanctum. Para reproducir las pruebas, prepara el Cliente A y su token según `README_Tema_2_4.md`.
 
 
 ## Proceso y alcance
 
 **Proceso:** registrar una dirección de entrega para pedidos a domicilio. **Actores:** cliente web o móvil y API Laravel. **Endpoint:** `POST /api/v1/clientes/direcciones`.
 
-Es una adaptación educativa independiente del sistema de restaurante. En el sistema original la dirección pertenece a un cliente autenticado; aquí no hay cuentas, autenticación ni vínculo con un cliente. La ruta representa el mismo tipo de operación, pero **no afirma ser una API idéntica** a la del sistema original. La única operación implementada para esta práctica es el registro.
+Esta práctica define el contrato JSON del registro de direcciones del proyecto. El cliente web o móvil envía los mismos campos a Laravel; el backend valida, registra la dirección en SQLite y devuelve una respuesta estable. La autenticación y la propiedad de la dirección se incorporaron después al mismo flujo y están activas al ejecutar esta versión del repositorio.
 
-## Archivos de entrega
+## Componentes de la implementación
 
 La implementación de esta práctica está en `routes/api.php` (ruta POST de direcciones), `app/Http/Requests/StoreDireccionEntregaRequest.php` (validación), `app/Http/Controllers/Api/DireccionEntregaController.php` (registro), `app/Models/DireccionEntrega.php` (modelo), `app/Http/Resources/DireccionEntregaResource.php` (respuesta JSON) y `database/migrations/2026_11_15_234102_create_direccion_entregas_table.php` (tabla SQLite). Los errores de las rutas API se configuran como JSON en `bootstrap/app.php`.
 
 Las pruebas están en `tests/Feature/RegistrarDireccionEntregaTest.php`; `phpunit.xml` las aísla en SQLite en memoria. Los tres cuerpos JSON para Postman aparecen en la sección de pruebas manuales de este documento. `database/factories/DireccionEntregaFactory.php` y `database/seeders/DatabaseSeeder.php` sirven únicamente para crear un registro ficticio opcional. El contrato y los comandos de ejecución se encuentran en este README.
 
-### Referencia del flujo del proyecto de aula
+### Flujo del proyecto de aula
 
-En el sistema de restaurante, un cliente identificado desde la web o la aplicación móvil registra una dirección para utilizarla en pedidos a domicilio. Los dos clientes necesitan enviar e interpretar los mismos campos. Esta práctica toma **ese proceso y su vocabulario** como referencia; no consulta ni modifica la base de datos del sistema original. La correspondencia siguiente es conceptual y no atribuye nombres de clases ni una arquitectura concreta al proyecto original.
+En el sistema de restaurante, un cliente identificado desde la web o la aplicación móvil registra una dirección para pedidos a domicilio. Los dos clientes necesitan enviar e interpretar los mismos campos. Esta tabla muestra cómo se verifica el contrato en este repositorio.
 
-| En el proceso del restaurante | En esta práctica Laravel |
+| Paso del proceso | Implementación y verificación |
 | --- | --- |
 | Cliente web o móvil envía una dirección de entrega | Postman simula al cliente y envía JSON a `POST /api/v1/clientes/direcciones` |
 | Los campos de la dirección tienen límites acordados para el proyecto de aula | `StoreDireccionEntregaRequest` aplica máximos de 40 caracteres para `etiqueta`, 200 para `direccion`, 20 para `telefono` y 200 para `observaciones` y `referencia`; también valida obligatoriedad, tipos y rangos de coordenadas |
-| La dirección pertenece a un cliente autenticado | Se omiten cuentas, autenticación y `cliente_id`; se guarda solo la dirección para estudiar el contrato JSON |
+| La dirección pertenece a un cliente autenticado | Sanctum identifica al usuario y el controlador asocia internamente su `user_id` a la dirección; el cliente no envía ese campo |
 | Registrar la dirección permite usarla después en un pedido a domicilio | `DireccionEntregaController` guarda los datos validados mediante el modelo `DireccionEntrega` en SQLite; no se implementan pedidos |
 | El cliente necesita conocer la dirección registrada | `DireccionEntregaResource` define la respuesta pública bajo `data`, con `id`, campos de la dirección, `activa` y `creadoAt` |
 
@@ -95,7 +95,7 @@ Cliente web o móvil → API Laravel → Form Request
     Datos inválidos → errors por campo → JSON 422 → cliente web o móvil
 ```
 
-Laravel **deserializa** el cuerpo JSON y deja sus valores disponibles en `StoreDireccionEntregaRequest`. Este Form Request valida antes de que se ejecute el controlador. El controlador guarda únicamente `$request->validated()` mediante el modelo `DireccionEntrega`. `DireccionEntregaResource` selecciona los campos públicos y Laravel los **serializa** en el objeto JSON `data`. El contrato evita que clientes diferentes interpreten `lat` como texto, `activa` como número o la fecha con otro formato.
+Laravel **deserializa** el cuerpo JSON y deja sus valores disponibles en `StoreDireccionEntregaRequest`. Este Form Request valida antes de que se ejecute el controlador. El controlador normaliza los datos validados, asocia internamente el usuario autenticado y registra la dirección mediante `DireccionEntrega`. `DireccionEntregaResource` selecciona los campos públicos y Laravel los **serializa** en el objeto JSON `data`. El contrato evita que clientes diferentes interpreten `lat` como texto, `activa` como número o la fecha con otro formato.
 
 ## SQLite
 
@@ -114,7 +114,7 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env; php artisan key:genera
 if (-not (Test-Path database/database.sqlite)) { New-Item database/database.sqlite -ItemType File | Out-Null }
 ```
 
-En `.env` (archivo ignorado por el repositorio), deja `DB_CONNECTION=sqlite` y comenta o quita `DB_DATABASE` para usar `database/database.sqlite`. Si `.env` ya existía pero `APP_KEY` está vacío, ejecuta `php artisan key:generate --no-interaction`. No hace falta configurar host, puerto, usuario ni contraseña. `phpunit.xml` fija `DB_CONNECTION=sqlite` y `DB_DATABASE=:memory:` para las pruebas automatizadas.
+En `.env` (archivo ignorado por el repositorio), deja `DB_CONNECTION=sqlite` y comenta o quita `DB_DATABASE` para usar `database/database.sqlite`. Si `.env` ya existía pero `APP_KEY` está vacío, ejecuta `php artisan key:generate --no-interaction`. No hace falta configurar host, puerto, usuario ni contraseña. `phpunit.xml` fija `DB_CONNECTION=sqlite` y `DB_DATABASE=:memory:` para las pruebas automatizadas. Prepara el token local `tokenA` según `README_Tema_2_4.md` antes de enviar solicitudes.
 
 ```powershell
 php artisan config:clear --no-interaction
@@ -127,7 +127,7 @@ Deja abierta esa terminal mientras pruebas en Postman. El servidor debe indicar 
 ## Pruebas manuales en Postman
 
 1. Crea una solicitud HTTP nueva. Selecciona **POST** y escribe `http://127.0.0.1:8000/api/v1/clientes/direcciones`.
-2. En **Authorization**, selecciona **Bearer Token** y usa el token de prueba de `README_Tema_2_4.md`. En **Headers**, agrega `Content-Type: application/json` y `Accept: application/json`.
+2. En **Authorization**, selecciona **Bearer Token** y escribe `{{tokenA}}` del entorno local preparado según `README_Tema_2_4.md`. En **Headers**, agrega `Content-Type: application/json` y `Accept: application/json`.
 3. En **Body**, selecciona **raw** y luego **JSON**. Pega uno de los cuerpos siguientes y pulsa **Send**. Reutiliza la misma solicitud cambiando solo el cuerpo para P2 y P3.
 
 **P1: solicitud válida.** Pega:
@@ -173,8 +173,8 @@ Estos tests comprueban P1, P2 y P3, incluidos los 422 y que las solicitudes inv�
 | P2 | Falta `etiqueta` | 422, `errors.etiqueta`, sin fila nueva |
 | P3 | `lat` es `"norte"` | 422, `errors.lat`, sin fila nueva |
 
-La suite específica pasó **8 pruebas y 74 aserciones**; la suite completa pasó **10 pruebas y 76 aserciones**. Las pruebas comprueban el estado y el cuerpo JSON, así como la ausencia de registros nuevos tras P2 y P3.
+La suite específica comprueba el estado y el cuerpo JSON, así como la ausencia de registros nuevos tras P2 y P3. Al ejecutar la suite completa también se comprueban las prácticas posteriores del repositorio.
 
 ## Reflexión individual
 
-El problema de integración era que un cliente web y uno móvil podían enviar o interpretar la misma dirección de maneras distintas. El contrato fija nombres, tipos, límites, campos opcionales y forma de respuesta. Elegí un Form Request para rechazar datos inválidos antes de guardar y un API Resource para mantener estable la salida. Verifiqué la decisión con P1, P2 y P3 contra SQLite y con pruebas automáticas que comprueban la respuesta y la ausencia de registros tras errores. La simplificación frente al sistema original es que aquí la dirección no pertenece a un cliente autenticado.
+El problema de integración era que un cliente web y uno móvil podían enviar o interpretar la misma dirección de maneras distintas. El contrato fija nombres, tipos, límites, campos opcionales y forma de respuesta. Elegí un Form Request para rechazar datos inválidos antes de guardar y un API Resource para mantener estable la salida. Verifiqué la decisión con P1, P2 y P3 contra SQLite y con pruebas automáticas que comprueban la respuesta y la ausencia de registros tras errores.
