@@ -3,12 +3,21 @@
 namespace Tests\Feature;
 
 use App\Models\DireccionEntrega;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class RegistrarDireccionEntregaTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Sanctum::actingAs(User::factory()->create());
+    }
 
     protected function beforeRefreshingDatabase(): void
     {

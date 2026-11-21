@@ -9,6 +9,7 @@ use App\Models\DireccionEntrega;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -16,6 +17,8 @@ class ResumenEntregaController extends Controller
 {
     public function show(Request $request, DireccionEntrega $direccion): JsonResponse
     {
+        Gate::authorize('view', $direccion);
+
         $correlationId = $request->attributes->get('correlation_id');
 
         if ($direccion->lat === null || $direccion->lng === null) {

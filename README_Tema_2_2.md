@@ -1,5 +1,7 @@
 # Práctica individual de contrato JSON y dirección de entrega
 
+**Estado actual desde la práctica 2.4 (viernes 20 de noviembre de 2026):** el POST requiere un token Bearer de Sanctum. La explicación histórica de esta práctica describe la implementación inicial; para volver a ejecutar sus pruebas manuales, genera un usuario y un token siguiendo `README_Tema_2_4.md`.
+
 
 ## Proceso y alcance
 
@@ -125,7 +127,7 @@ Deja abierta esa terminal mientras pruebas en Postman. El servidor debe indicar 
 ## Pruebas manuales en Postman
 
 1. Crea una solicitud HTTP nueva. Selecciona **POST** y escribe `http://127.0.0.1:8000/api/v1/clientes/direcciones`.
-2. En **Authorization**, selecciona **No Auth**. En **Headers**, agrega `Content-Type: application/json` y `Accept: application/json`.
+2. En **Authorization**, selecciona **Bearer Token** y usa el token de prueba de `README_Tema_2_4.md`. En **Headers**, agrega `Content-Type: application/json` y `Accept: application/json`.
 3. En **Body**, selecciona **raw** y luego **JSON**. Pega uno de los cuerpos siguientes y pulsa **Send**. Reutiliza la misma solicitud cambiando solo el cuerpo para P2 y P3.
 
 **P1: solicitud válida.** Pega:

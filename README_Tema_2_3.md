@@ -1,5 +1,7 @@
 # Práctica individual de traducción y normalización de direcciones de entrega
 
+**Estado actual desde la práctica 2.4 (viernes 20 de noviembre de 2026):** ambos POST de direcciones requieren un token Bearer de Sanctum. Para repetir las pruebas manuales, genera un usuario y un token siguiendo `README_Tema_2_4.md`.
+
 ## Proceso y alcance
 
 **Estudiante:** Maykel Menendez. **Proceso:** registrar una dirección de entrega para pedidos a domicilio. **Actores de referencia:** pantalla móvil de direcciones, checkout móvil y API. **Objetivo:** traducir dos estructuras de entrada a un contrato JSON plano común.
@@ -110,7 +112,7 @@ Deja abierta esa terminal mientras pruebas. Si el puerto 8000 está ocupado, usa
 
 ## Pruebas manuales en Postman
 
-En las tres solicitudes selecciona **POST** y **Authorization → No Auth**. En **Headers** agrega `Content-Type: application/json` y `Accept: application/json`. En **Body → raw → JSON**, pega el cuerpo correspondiente y pulsa **Send**.
+En las tres solicitudes selecciona **POST** y **Authorization → Bearer Token** con el token de prueba de `README_Tema_2_4.md`. En **Headers** agrega `Content-Type: application/json` y `Accept: application/json`. En **Body → raw → JSON**, pega el cuerpo correspondiente y pulsa **Send**.
 
 **P1. Origen A plano.** URL: `http://localhost:8000/api/v1/clientes/direcciones`. Pega:
 

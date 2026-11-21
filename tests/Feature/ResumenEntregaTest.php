@@ -3,19 +3,31 @@
 namespace Tests\Feature;
 
 use App\Models\DireccionEntrega;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ResumenEntregaTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $usuario;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->usuario = User::factory()->create();
+        Sanctum::actingAs($this->usuario);
+    }
+
     public function test_compone_un_resumen_para_una_direccion_guardada(): void
     {
-        $direccion = DireccionEntrega::factory()->create(['lat' => -0.9580285, 'lng' => -80.6384797]);
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id, 'lat' => -0.9580285, 'lng' => -80.6384797]);
         Http::preventStrayRequests();
         Http::fake([
             '*/cobertura*' => Http::response(['disponible' => true]),
@@ -46,7 +58,7 @@ class ResumenEntregaTest extends TestCase
 
     public function test_genera_correlation_id_cuando_no_se_envia(): void
     {
-        $direccion = DireccionEntrega::factory()->create(['lat' => -0.9580285, 'lng' => -80.6384797]);
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id, 'lat' => -0.9580285, 'lng' => -80.6384797]);
         Http::preventStrayRequests();
         Http::fake([
             '*/cobertura*' => Http::response(['disponible' => true]),
@@ -71,7 +83,7 @@ class ResumenEntregaTest extends TestCase
 
     public function test_direccion_sin_coordenadas_devuelve_422_sin_consultar_servicios(): void
     {
-        $direccion = DireccionEntrega::factory()->create();
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id]);
         Http::preventStrayRequests();
 
         $this->getJson("/api/v1/clientes/direcciones/{$direccion->id}/resumen-entrega")
@@ -83,7 +95,7 @@ class ResumenEntregaTest extends TestCase
 
     public function test_sin_cobertura_no_presenta_una_estimacion_de_entrega(): void
     {
-        $direccion = DireccionEntrega::factory()->create(['lat' => -2.0, 'lng' => -79.0]);
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id, 'lat' => -2.0, 'lng' => -79.0]);
         Http::preventStrayRequests();
         Http::fake([
             '*/cobertura*' => Http::response(['disponible' => false]),
@@ -100,7 +112,7 @@ class ResumenEntregaTest extends TestCase
 
     public function test_error_http_de_un_servicio_devuelve_502_sin_trazas(): void
     {
-        $direccion = DireccionEntrega::factory()->create(['lat' => -0.9580285, 'lng' => -80.6384797]);
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id, 'lat' => -0.9580285, 'lng' => -80.6384797]);
         Http::preventStrayRequests();
         Http::fake([
             '*/cobertura*' => Http::response(['disponible' => true]),
@@ -116,7 +128,7 @@ class ResumenEntregaTest extends TestCase
 
     public function test_servicio_sin_respuesta_devuelve_502_controlado(): void
     {
-        $direccion = DireccionEntrega::factory()->create(['lat' => -0.9580285, 'lng' => -80.6384797]);
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id, 'lat' => -0.9580285, 'lng' => -80.6384797]);
         Http::preventStrayRequests();
         Http::fake([
             '*/cobertura*' => fn () => throw new ConnectionException('timeout'),
@@ -131,7 +143,7 @@ class ResumenEntregaTest extends TestCase
 
     public function test_respuesta_incompleta_de_un_servicio_devuelve_502(): void
     {
-        $direccion = DireccionEntrega::factory()->create(['lat' => -0.9580285, 'lng' => -80.6384797]);
+        $direccion = DireccionEntrega::factory()->create(['user_id' => $this->usuario->id, 'lat' => -0.9580285, 'lng' => -80.6384797]);
         Http::preventStrayRequests();
         Http::fake([
             '*/cobertura*' => Http::response(['disponible' => true]),

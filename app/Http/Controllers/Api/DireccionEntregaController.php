@@ -16,20 +16,23 @@ class DireccionEntregaController extends Controller
 
     public function store(StoreDireccionEntregaRequest $request): JsonResponse
     {
-        return $this->guardar($this->normalizador->desdeDirecciones($request->validated()));
+        return $this->guardar($request, $this->normalizador->desdeDirecciones($request->validated()));
     }
 
     public function storeDesdeCheckout(StoreDireccionCheckoutRequest $request): JsonResponse
     {
-        return $this->guardar($this->normalizador->desdeCheckout($request->validated()));
+        return $this->guardar($request, $this->normalizador->desdeCheckout($request->validated()));
     }
 
     /**
      * @param  array<string, mixed>  $datos
      */
-    private function guardar(array $datos): JsonResponse
+    private function guardar(StoreDireccionEntregaRequest|StoreDireccionCheckoutRequest $request, array $datos): JsonResponse
     {
-        $direccion = DireccionEntrega::create($datos)->refresh();
+        $direccion = new DireccionEntrega($datos);
+        $direccion->user()->associate($request->user());
+        $direccion->save();
+        $direccion->refresh();
 
         return (new DireccionEntregaResource($direccion))->response()->setStatusCode(201);
     }
