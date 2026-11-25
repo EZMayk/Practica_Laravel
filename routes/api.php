@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DireccionEntregaController;
 use App\Http\Controllers\Api\EstadoController;
+use App\Http\Controllers\Api\MensajeEntregaController;
 use App\Http\Controllers\Api\ResumenEntregaController;
 use App\Http\Controllers\Api\SolicitudResumenEntregaController;
 use App\Http\Controllers\Menu\CategoriasController;
@@ -17,6 +18,9 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/v1/clientes/resumenes-entrega', [SolicitudResumenEntregaController::class, 'store']);
     Route::get('/v1/clientes/resumenes-entrega/{solicitud}', [SolicitudResumenEntregaController::class, 'show'])
         ->whereNumber('solicitud');
+    Route::post('/v1/clientes/mensajes-entrega', [MensajeEntregaController::class, 'store']);
+    Route::get('/v1/clientes/mensajes-entrega/{mensaje}', [MensajeEntregaController::class, 'show'])
+        ->whereNumber('mensaje');
 });
 
 Route::get('/user', function (Request $request) {
